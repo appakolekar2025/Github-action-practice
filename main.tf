@@ -16,3 +16,8 @@ resource "azurerm_resource_group" "RG" {
   location = "centralindia"
   
 }
+resource "azurerm_resource_group" "RG1" {
+  name = "myrg1"
+  location = "eastus"
+  
+}
