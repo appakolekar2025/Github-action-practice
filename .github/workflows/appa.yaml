@@ -23,6 +23,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: |
+            {
+              "clientId": "a5d71c05-75a6-4a49-85dd-724dbe6e7a78",
+              "clientSecret": "EoK8Q~HLbxv5rUuEV44fIzJ~1GAtkmR.qs-DNa3a",
+              "subscriptionId": "d4fb712a-aae3-49cf-8c1b-9ed8f8b11a56",
+              "tenantId": "8dd47890-014e-4d4a-9706-c08392fd00d0"
+            }
+
+      - name: Check Azure Account
+        run: az account show
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -34,4 +48,3 @@ jobs:
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
-        
