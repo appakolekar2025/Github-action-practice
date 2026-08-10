@@ -10,14 +10,14 @@ permissions:
   id-token: write
   contents: read
 
+# =========================================================
+# FEATURE BRANCH - PLAN ONLY
+# =========================================================
+
 jobs:
 
-  # ==========================================
-  # FEATURE BRANCH - PLAN ONLY
-  # ==========================================
-
-  terraform-plan:
-    name: Terraform Plan - Feature
+  feature-plan:
+    name: 🔵 Feature - Terraform Plan
     if: github.ref == 'refs/heads/feature'
     runs-on: ubuntu-latest
 
@@ -30,38 +30,59 @@ jobs:
 
     steps:
 
-      - name: Checkout Code
+      # -------------------------------
+      # 1. Checkout
+      # -------------------------------
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: Azure Login
+      # -------------------------------
+      # 2. Azure Login
+      # -------------------------------
+      - name: 🔐 Azure Login
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Check Azure Login
+      # -------------------------------
+      # 3. Verify Azure Login
+      # -------------------------------
+      - name: 🔎 Check Azure Login
         run: az account show
 
-      - name: Setup Terraform
+      # -------------------------------
+      # 4. Setup Terraform
+      # -------------------------------
+      - name: 🏗️ Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init
+      # -------------------------------
+      # 5. Terraform Init
+      # -------------------------------
+      - name: 📦 Terraform Init
         run: terraform init
 
-      - name: Terraform Validate
+      # -------------------------------
+      # 6. Terraform Validate
+      # -------------------------------
+      - name: ✅ Terraform Validate
         run: terraform validate
 
-      - name: Terraform Plan
+      # -------------------------------
+      # 7. Terraform Plan
+      # -------------------------------
+      - name: 📋 Terraform Plan
         run: terraform plan
 
 
-  # ==========================================
-  # MAIN BRANCH - APPLY
-  # ==========================================
+  # =========================================================
+  # MAIN BRANCH - PLAN
+  # =========================================================
 
-  terraform-apply:
-    name: Terraform Apply - Main
+  main-plan:
+    name: 🟢 Main - Terraform Plan
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
@@ -74,30 +95,125 @@ jobs:
 
     steps:
 
-      - name: Checkout Code
+      # -------------------------------
+      # 1. Checkout
+      # -------------------------------
+      - name: 📥 Checkout Code
         uses: actions/checkout@v4
 
-      - name: Azure Login
+      # -------------------------------
+      # 2. Azure Login
+      # -------------------------------
+      - name: 🔐 Azure Login
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Check Azure Login
+      # -------------------------------
+      # 3. Verify Azure Login
+      # -------------------------------
+      - name: 🔎 Check Azure Login
         run: az account show
 
-      - name: Setup Terraform
+      # -------------------------------
+      # 4. Setup Terraform
+      # -------------------------------
+      - name: 🏗️ Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init
+      # -------------------------------
+      # 5. Terraform Init
+      # -------------------------------
+      - name: 📦 Terraform Init
         run: terraform init
 
-      - name: Terraform Validate
+      # -------------------------------
+      # 6. Terraform Validate
+      # -------------------------------
+      - name: ✅ Terraform Validate
         run: terraform validate
 
-      - name: Terraform Plan
-        run: terraform plan
+      # -------------------------------
+      # 7. Terraform Plan
+      # -------------------------------
+      - name: 📋 Terraform Plan
+        run: terraform plan -out=tfplan
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
+      # -------------------------------
+      # 8. Upload Plan
+      # -------------------------------
+      - name: 📤 Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: tfplan
+
+
+  # =========================================================
+  # MAIN BRANCH - APPLY
+  # =========================================================
+
+  main-apply:
+    name: 🚀 Main - Terraform Apply
+    if: github.ref == 'refs/heads/main'
+    needs: main-plan
+    runs-on: ubuntu-latest
+
+    env:
+      ARM_USE_OIDC: true
+      ARM_USE_AZUREAD: true
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    steps:
+
+      # -------------------------------
+      # 1. Checkout
+      # -------------------------------
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      # -------------------------------
+      # 2. Azure Login
+      # -------------------------------
+      - name: 🔐 Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # -------------------------------
+      # 3. Verify Azure Login
+      # -------------------------------
+      - name: 🔎 Check Azure Login
+        run: az account show
+
+      # -------------------------------
+      # 4. Setup Terraform
+      # -------------------------------
+      - name: 🏗️ Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # -------------------------------
+      # 5. Terraform Init
+      # -------------------------------
+      - name: 📦 Terraform Init
+        run: terraform init
+
+      # -------------------------------
+      # 6. Download Terraform Plan
+      # -------------------------------
+      - name: 📥 Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plan
+
+      # -------------------------------
+      # 7. Terraform Apply
+      # -------------------------------
+      - name: 🚀 Terraform Apply
+        run: terraform apply -auto-approve tfplan
