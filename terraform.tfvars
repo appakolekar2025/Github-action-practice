@@ -11,4 +11,8 @@ rg = {
         name="dev-rg"
         location="eastus"
     }
+               rg4={
+        name="qa-rg"
+        location="westus"
+    }
 }
