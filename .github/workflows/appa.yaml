@@ -1,3 +1,4 @@
+```yaml
 name: Terraform CI/CD
 
 on:
@@ -10,15 +11,32 @@ permissions:
   id-token: write
   contents: read
 
+
+# ============================================================
+# 1. CHECKOUT
+# ============================================================
+
 jobs:
 
-  # ==========================================
-  # FEATURE BRANCH - PLAN ONLY
-  # ==========================================
+  checkout:
+    name: 1️⃣ Checkout Code
+    runs-on: ubuntu-latest
 
-  terraform-plan:
-    name: Terraform Plan - Feature
-    if: github.ref == 'refs/heads/feature'
+    outputs:
+      branch: ${{ github.ref }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+
+  # ============================================================
+  # 2. AZURE LOGIN
+  # ============================================================
+
+  azure-login:
+    name: 2️⃣ Azure Login
+    needs: checkout
     runs-on: ubuntu-latest
 
     env:
@@ -29,7 +47,6 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -43,6 +60,85 @@ jobs:
       - name: Check Azure Login
         run: az account show
 
+
+  # ============================================================
+  # 3. TERRAFORM SETUP
+  # ============================================================
+
+  terraform-setup:
+    name: 3️⃣ Setup Terraform
+    needs: azure-login
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+
+  # ============================================================
+  # 4. TERRAFORM INIT
+  # ============================================================
+
+  terraform-init:
+    name: 4️⃣ Terraform Init
+    needs: terraform-setup
+    runs-on: ubuntu-latest
+
+    env:
+      ARM_USE_OIDC: true
+      ARM_USE_AZUREAD: true
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
+
+  # ============================================================
+  # 5. TERRAFORM VALIDATE
+  # ============================================================
+
+  terraform-validate:
+    name: 5️⃣ Terraform Validate
+    needs: terraform-init
+    runs-on: ubuntu-latest
+
+    env:
+      ARM_USE_OIDC: true
+      ARM_USE_AZUREAD: true
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -52,16 +148,51 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
+
+  # ============================================================
+  # 6. TERRAFORM PLAN
+  # ============================================================
+
+  terraform-plan:
+    name: 6️⃣ Terraform Plan
+    needs: terraform-validate
+    runs-on: ubuntu-latest
+
+    env:
+      ARM_USE_OIDC: true
+      ARM_USE_AZUREAD: true
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+
       - name: Terraform Plan
         run: terraform plan
 
 
-  # ==========================================
-  # MAIN BRANCH - APPLY
-  # ==========================================
+  # ============================================================
+  # 7. TERRAFORM APPLY - MAIN ONLY
+  # ============================================================
 
   terraform-apply:
-    name: Terraform Apply - Main
+    name: 7️⃣ Terraform Apply
+    needs: terraform-plan
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
@@ -73,7 +204,6 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -84,20 +214,12 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Check Azure Login
-        run: az account show
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Validate
-        run: terraform validate
-
-      - name: Terraform Plan
-        run: terraform plan
-
       - name: Terraform Apply
         run: terraform apply -auto-approve
+
